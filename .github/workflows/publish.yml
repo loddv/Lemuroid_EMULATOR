@@ -9,12 +9,24 @@ on:
       tags:
         description: 'Tags to publish'
         required: false
+      os:
+        description: 'Sistema Operacional (Runner)'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - macos-latest
+          - windows-latest
 
 jobs:
 
   build:
     name: Build APK
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v6.0.2
@@ -51,11 +63,11 @@ jobs:
   publish_apk:
     name: Publish APK on Github
     needs: [ build ]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
 
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v3.1.0
+        uses: actions/download-artifact@v7
         with:
           name: apk
 
@@ -64,5 +76,7 @@ jobs:
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
+          draft: false
+          automatic_release_tag: ${{ inputs.tags || github.ref_name }}
           title: "Pre-release"
           files: lemuroid-app-free-dynamic-release.apk
