@@ -5,6 +5,10 @@ on:
     tags:
       - "*"
   workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Tags to publish'
+        required: false
 
 jobs:
 
