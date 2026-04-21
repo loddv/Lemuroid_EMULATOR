@@ -1,4 +1,4 @@
 [submodule "lemuroid-cores"]
 	path = lemuroid-cores
 	url = https://github.com/loddv/LemuroidCores
-	branch = master
+	branch = dev
