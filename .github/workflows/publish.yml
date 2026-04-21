@@ -21,6 +21,14 @@ on:
           - ubuntu-20.04
           - macos-latest
           - windows-latest
+      keystore:
+        description: 'Assinatura do APK'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
 
 jobs:
 
@@ -41,12 +49,21 @@ jobs:
           cache: gradle
 
       - name: Create release keystore
+        if: ${{ inputs.keystore != 'debug' }}
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
           RELEASE_KEYSTORE_PASSPHRASE: ${{ secrets.RELEASE_KEYSTORE_PASSPHRASE }}
         run: |
           echo "$RELEASE_KEYSTORE" > release.keystore.asc
           echo "$RELEASE_KEYSTORE_PASSPHRASE" | gpg -d --batch --passphrase-fd 0 release.keystore.asc > release.jks
+
+      - name: Setup debug keystore
+        if: ${{ inputs.keystore == 'debug' }}
+        run: |
+          cp debug.keystore release.jks
+          sed -i 's/keyAlias = "lemuroid"/keyAlias = "androiddebugkey"/' lemuroid-app/build.gradle.kts
+          sed -i 's/storePassword = "lemuroid"/storePassword = "android"/' lemuroid-app/build.gradle.kts
+          sed -i 's/keyPassword = "lemuroid"/keyPassword = "android"/' lemuroid-app/build.gradle.kts
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
