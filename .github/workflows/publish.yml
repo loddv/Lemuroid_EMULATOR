@@ -29,6 +29,12 @@ on:
         options:
           - release
           - debug
+      # --- NOVO INPUT ADICIONADO ---
+      publish:
+        description: 'Publicar APK no GitHub?'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
 
@@ -36,7 +42,7 @@ jobs:
     name: Build APK
     environment: dev
     runs-on: ${{ inputs.os || 'ubuntu-latest' }}
-
+    # ... (restante dos passos do build permanecem iguais)
     steps:
       - uses: actions/checkout@v6.0.2
         with:
@@ -81,6 +87,9 @@ jobs:
   publish_apk:
     name: Publish APK on Github
     needs: [ build ]
+    # --- CONDICIONAL ADICIONADO ---
+    # Executa se for um PUSH de tag OU se o input 'publish' for true
+    if: github.event_name == 'push' || inputs.publish == true
     runs-on: ${{ inputs.os || 'ubuntu-latest' }}
 
     steps:
