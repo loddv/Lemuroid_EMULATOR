@@ -71,6 +71,10 @@ jobs:
           sed -i 's/keyAlias = "lemuroid"/keyAlias = "androiddebugkey"/' lemuroid-app/build.gradle.kts
           sed -i 's/storePassword = "lemuroid"/storePassword = "android"/' lemuroid-app/build.gradle.kts
           sed -i 's/keyPassword = "lemuroid"/keyPassword = "android"/' lemuroid-app/build.gradle.kts
+      
+      - name: Set short SHA
+        id: set_sha
+        run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -83,7 +87,13 @@ jobs:
         with:
           name: apk
           path: lemuroid-app/build/outputs/apk/freeDynamic/release/lemuroid-app-free-dynamic-release.apk
-
+      
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: lemuroid-app-free-dynamic-release-${{ steps.set_sha.outputs.short_sha }}
+          path: lemuroid-app/build/outputs/apk/freeDynamic/release/lemuroid-app-free-dynamic-release.apk
+      
   publish_apk:
     name: Publish APK on Github
     needs: [ build ]
