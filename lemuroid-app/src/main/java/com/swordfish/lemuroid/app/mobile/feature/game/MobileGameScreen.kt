@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Height
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material3.Card
@@ -170,7 +171,22 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                         touchControlsVisibleState.value
 
                 if (isVisible) {
-                    CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
+                    CompositionLocalProvider(
+                        LocalLemuroidPadTheme provides
+                            remember(
+                                touchControllerSettings.red,
+                                touchControllerSettings.green,
+                                touchControllerSettings.blue,
+                                touchControllerSettings.alpha,
+                            ) {
+                                LemuroidPadTheme(
+                                    touchControllerSettings.red,
+                                    touchControllerSettings.green,
+                                    touchControllerSettings.blue,
+                                    touchControllerSettings.alpha,
+                                )
+                            },
+                    ) {
                         if (!isLandscape) {
                             PadContainer(
                                 modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
@@ -305,6 +321,46 @@ private fun MenuEditTouchControls(
                         onValueChange = {
                             viewModel.updateTouchControllerSettings(
                                 touchControllerSettings.copy(marginY = it),
+                            )
+                        },
+                    )
+                }
+                MenuEditTouchControlRow(Icons.Default.Palette, "Red", 0f) {
+                    Slider(
+                        value = touchControllerSettings.red,
+                        onValueChange = {
+                            viewModel.updateTouchControllerSettings(
+                                touchControllerSettings.copy(red = it),
+                            )
+                        },
+                    )
+                }
+                MenuEditTouchControlRow(Icons.Default.Palette, "Green", 0f) {
+                    Slider(
+                        value = touchControllerSettings.green,
+                        onValueChange = {
+                            viewModel.updateTouchControllerSettings(
+                                touchControllerSettings.copy(green = it),
+                            )
+                        },
+                    )
+                }
+                MenuEditTouchControlRow(Icons.Default.Palette, "Blue", 0f) {
+                    Slider(
+                        value = touchControllerSettings.blue,
+                        onValueChange = {
+                            viewModel.updateTouchControllerSettings(
+                                touchControllerSettings.copy(blue = it),
+                            )
+                        },
+                    )
+                }
+                MenuEditTouchControlRow(Icons.Default.Palette, "Opacity", 0f) {
+                    Slider(
+                        value = touchControllerSettings.alpha,
+                        onValueChange = {
+                            viewModel.updateTouchControllerSettings(
+                                touchControllerSettings.copy(alpha = it),
                             )
                         },
                     )

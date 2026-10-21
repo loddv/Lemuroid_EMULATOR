@@ -6,12 +6,22 @@ import androidx.compose.ui.graphics.DefaultShadowColor
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-class LemuroidPadTheme {
+class LemuroidPadTheme(
+    red: Float = 1f,
+    green: Float = 1f,
+    blue: Float = 1f,
+    alpha: Float = 1f,
+) {
+    private val base = Color(red.coerceIn(0f, 1f), green.coerceIn(0f, 1f), blue.coerceIn(0f, 1f))
+    private val inverse = Color(1f - base.red, 1f - base.green, 1f - base.blue)
+    private val alphaMultiplier = alpha.coerceIn(0f, 1f)
+
+    // luminosity 1 maps to the base color, 0 to its inverse (used for icons and pressed states)
     private fun gray(
         luminosity: Float,
         opacity: Float,
     ): Color {
-        return Color(luminosity, luminosity, luminosity, opacity)
+        return (if (luminosity >= 0.5f) base else inverse).copy(alpha = opacity * alphaMultiplier)
     }
 
     val foregroundPadding: Dp = 8.dp
