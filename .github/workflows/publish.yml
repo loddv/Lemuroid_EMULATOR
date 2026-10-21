@@ -1,0 +1,119 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Tags to publish'
+        required: false
+      os:
+        description: 'Sistema Operacional (Runner)'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - macos-latest
+          - windows-latest
+      keystore:
+        description: 'Assinatura do APK'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+      # --- NOVO INPUT ADICIONADO ---
+      publish:
+        description: 'Publicar APK no GitHub?'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+
+  build:
+    name: Build APK
+    environment: dev
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
+    # ... (restante dos passos do build permanecem iguais)
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          submodules: recursive
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Create release keystore
+        if: ${{ inputs.keystore != 'debug' }}
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+          RELEASE_KEYSTORE_PASSPHRASE: ${{ secrets.RELEASE_KEYSTORE_PASSPHRASE }}
+        run: |
+          echo "$RELEASE_KEYSTORE" > release.keystore.asc
+          echo "$RELEASE_KEYSTORE_PASSPHRASE" | gpg -d --batch --passphrase-fd 0 release.keystore.asc > release.jks
+
+      - name: Setup debug keystore
+        if: ${{ inputs.keystore == 'debug' }}
+        run: |
+          cp debug.keystore release.jks
+          sed -i 's/keyAlias = "lemuroid"/keyAlias = "androiddebugkey"/' lemuroid-app/build.gradle.kts
+          sed -i 's/storePassword = "lemuroid"/storePassword = "android"/' lemuroid-app/build.gradle.kts
+          sed -i 's/keyPassword = "lemuroid"/keyPassword = "android"/' lemuroid-app/build.gradle.kts
+      
+      - name: Set short SHA
+        id: set_sha
+        run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Assemble Artifact
+        run: ./gradlew assembleFreeDynamic
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk
+          path: lemuroid-app/build/outputs/apk/freeDynamic/release/lemuroid-app-free-dynamic-release.apk
+      
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: lemuroid-app-free-dynamic-release-${{ steps.set_sha.outputs.short_sha }}
+          path: lemuroid-app/build/outputs/apk/freeDynamic/release/lemuroid-app-free-dynamic-release.apk
+      
+  publish_apk:
+    name: Publish APK on Github
+    needs: [ build ]
+    # --- CONDICIONAL ADICIONADO ---
+    # Executa se for um PUSH de tag OU se o input 'publish' for true
+    if: github.event_name == 'push' || inputs.publish == true
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: apk
+
+      - name: Create pre-release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          draft: false
+          automatic_release_tag: ${{ inputs.tags || github.ref_name }}
+          title: "Pre-release"
+          files: lemuroid-app-free-dynamic-release.apk
