@@ -4,6 +4,41 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
+        android:title="@string/roms"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreference
+            android:key="@string/pref_key_incremental_indexing"
+            android:title="@string/settings_title_incremental_indexing"
+            android:summary="@string/settings_description_incremental_indexing"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+
+        <SwitchPreference
+            android:key="@string/pref_key_parallel_indexing"
+            android:title="@string/settings_title_parallel_indexing"
+            android:summary="@string/settings_description_parallel_indexing"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+
+        <SwitchPreference
+            android:key="@string/pref_key_reduce_expensive_reads"
+            android:title="@string/settings_title_reduce_expensive_reads"
+            android:summary="@string/settings_description_reduce_expensive_reads"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false"/>
+
+        <ListPreference
+            android:key="@string/pref_key_indexing_workers"
+            android:title="@string/settings_title_indexing_workers"
+            android:summary="@string/settings_description_indexing_workers"
+            android:entries="@array/indexing_worker_values"
+            app:entryValues="@array/indexing_worker_values"
+            android:defaultValue="4"
+            app:iconSpaceReserved="false"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/settings_category_general"
         app:iconSpaceReserved="false">
 
