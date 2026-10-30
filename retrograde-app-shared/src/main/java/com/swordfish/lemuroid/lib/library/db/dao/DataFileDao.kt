@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.swordfish.lemuroid.lib.library.db.entity.DataFile
 
 @Dao
@@ -19,6 +20,9 @@ interface DataFileDao {
 
     @Insert
     fun insert(dataFiles: List<DataFile>)
+
+    @Update
+    fun update(dataFiles: List<DataFile>)
 
     @Delete
     fun delete(dataFiles: List<DataFile>)

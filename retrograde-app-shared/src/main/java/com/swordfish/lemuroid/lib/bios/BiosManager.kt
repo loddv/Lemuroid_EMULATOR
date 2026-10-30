@@ -75,7 +75,7 @@ class BiosManager(private val directoriesManager: DirectoriesManager) {
         inputStream: InputStream,
         timestampMs: Long,
     ): Boolean {
-        val bios = findByCRC(storageFile) ?: findByName(storageFile) ?: return false
+        val bios = findBios(storageFile) ?: return false
 
         Timber.i("Importing bios file: $bios")
 
@@ -87,6 +87,22 @@ class BiosManager(private val directoriesManager: DirectoriesManager) {
             inputStream.writeToFile(biosFile)
         }
         return true
+    }
+
+    fun findBiosFileName(storageFile: StorageFile): String? {
+        return findBios(storageFile)?.libretroFileName
+    }
+
+    fun touchBios(
+        biosFileName: String,
+        timestampMs: Long,
+    ) {
+        File(directoriesManager.getSystemDirectory(), biosFileName)
+            .setLastModified(normalizeTimestamp(timestampMs))
+    }
+
+    private fun findBios(storageFile: StorageFile): Bios? {
+        return findByCRC(storageFile) ?: findByName(storageFile)
     }
 
     private fun findByCRC(storageFile: StorageFile): Bios? {

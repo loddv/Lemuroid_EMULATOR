@@ -52,6 +52,7 @@ import com.swordfish.lemuroid.lib.injection.PerActivity
 import com.swordfish.lemuroid.lib.injection.PerApp
 import com.swordfish.lemuroid.lib.library.covers.CustomCoverManager
 import com.swordfish.lemuroid.lib.library.LemuroidLibrary
+import com.swordfish.lemuroid.lib.library.LibraryIndexingPreferences
 import com.swordfish.lemuroid.lib.library.db.RetrogradeDatabase
 import com.swordfish.lemuroid.lib.library.db.dao.GameSearchDao
 import com.swordfish.lemuroid.lib.library.db.dao.Migrations
@@ -190,7 +191,21 @@ abstract class LemuroidApplicationModule {
             gameMetadataProvider: Lazy<GameMetadataProvider>,
             biosManager: BiosManager,
             customCoverManager: CustomCoverManager,
-        ) = LemuroidLibrary(db, storageProviderRegistry, gameMetadataProvider, biosManager, customCoverManager)
+            indexingPreferences: LibraryIndexingPreferences,
+        ) =
+            LemuroidLibrary(
+                db,
+                storageProviderRegistry,
+                gameMetadataProvider,
+                biosManager,
+                customCoverManager,
+                indexingPreferences,
+            )
+
+        @Provides
+        @PerApp
+        @JvmStatic
+        fun libraryIndexingPreferences(context: Context) = LibraryIndexingPreferences(context)
 
         @Provides
         @PerApp

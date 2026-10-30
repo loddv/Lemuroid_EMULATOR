@@ -12,15 +12,16 @@ object StorageFilesMerger {
         storageProvider: StorageProvider,
         files: List<BaseStorageFile>,
     ): List<GroupedStorageFiles> {
+        val textFileCache = mutableMapOf<Uri, List<String>>()
         val allFiles =
             files
                 .associateWith { listOf<BaseStorageFile>() }
                 .toMutableMap()
 
-        mergeBinCueFiles(allFiles, storageProvider)
-        removeInvalidBinCuePairs(allFiles, storageProvider)
-        mergeM3UPlaylists(allFiles, storageProvider)
-        removeInvalidM3UPlaylists(allFiles, storageProvider)
+        mergeBinCueFiles(allFiles, storageProvider, textFileCache)
+        removeInvalidBinCuePairs(allFiles, storageProvider, textFileCache)
+        mergeM3UPlaylists(allFiles, storageProvider, textFileCache)
+        removeInvalidM3UPlaylists(allFiles, storageProvider, textFileCache)
 
         return allFiles.map { GroupedStorageFiles(it.key, it.value) }
     }
@@ -28,6 +29,7 @@ object StorageFilesMerger {
     private fun removeInvalidM3UPlaylists(
         allFiles: MutableMap<BaseStorageFile, List<BaseStorageFile>>,
         storageProvider: StorageProvider,
+        textFileCache: MutableMap<Uri, List<String>>,
     ) {
         val toBeRemoved = mutableListOf<BaseStorageFile>()
 
@@ -37,7 +39,7 @@ object StorageFilesMerger {
             .forEach { m3uFile ->
                 val m3uFiles: List<String> =
                     runCatching {
-                        storageProvider.getInputStream(m3uFile.uri)?.readLines()
+                        readLinesCached(storageProvider, m3uFile.uri, textFileCache)
                     }.getOrNull() ?: listOf()
 
                 val filesNames = allFiles[m3uFile]?.map { it.name } ?: listOf()
@@ -53,6 +55,7 @@ object StorageFilesMerger {
     private fun mergeM3UPlaylists(
         allFiles: MutableMap<BaseStorageFile, List<BaseStorageFile>>,
         storageProvider: StorageProvider,
+        textFileCache: MutableMap<Uri, List<String>>,
     ) {
         val toBeRemoved = mutableListOf<BaseStorageFile>()
 
@@ -62,7 +65,7 @@ object StorageFilesMerger {
             .forEach { m3uFile ->
                 val m3uFiles =
                     runCatching {
-                        storageProvider.getInputStream(m3uFile.uri)?.readLines()
+                        readLinesCached(storageProvider, m3uFile.uri, textFileCache)
                     }.getOrNull() ?: listOf()
 
                 val dataFiles = allFiles.filter { it.key.name in m3uFiles }
@@ -80,6 +83,7 @@ object StorageFilesMerger {
     private fun removeInvalidBinCuePairs(
         allFiles: MutableMap<BaseStorageFile, List<BaseStorageFile>>,
         storageProvider: StorageProvider,
+        textFileCache: MutableMap<Uri, List<String>>,
     ) {
         val toBeRemoved = mutableListOf<BaseStorageFile>()
 
@@ -87,7 +91,7 @@ object StorageFilesMerger {
             .asSequence()
             .filter { it.extension == "cue" }
             .forEach {
-                val requestedFileNames = extractBinFiles(storageProvider, it.uri).toSet()
+                val requestedFileNames = extractBinFiles(storageProvider, it.uri, textFileCache).toSet()
                 val givenFileNames = allFiles[it]?.map { it.name }?.toSet() ?: setOf()
 
                 if (requestedFileNames != givenFileNames) toBeRemoved.add(it)
@@ -99,6 +103,7 @@ object StorageFilesMerger {
     private fun mergeBinCueFiles(
         allFiles: MutableMap<BaseStorageFile, List<BaseStorageFile>>,
         storageProvider: StorageProvider,
+        textFileCache: MutableMap<Uri, List<String>>,
     ) {
         val toBeRemoved = mutableListOf<BaseStorageFile>()
 
@@ -106,7 +111,7 @@ object StorageFilesMerger {
             .asSequence()
             .filter { it.extension == "cue" }
             .forEach { cueFile ->
-                val requestedBinFiles = extractBinFiles(storageProvider, cueFile.uri)
+                val requestedBinFiles = extractBinFiles(storageProvider, cueFile.uri, textFileCache)
 
                 val binFiles =
                     allFiles
@@ -125,11 +130,22 @@ object StorageFilesMerger {
     private fun extractBinFiles(
         storageProvider: StorageProvider,
         uri: Uri,
+        textFileCache: MutableMap<Uri, List<String>>,
     ): List<String> {
         return runCatching {
-            storageProvider.getInputStream(uri)?.readLines()
+            readLinesCached(storageProvider, uri, textFileCache)
                 ?.mapNotNull { Regex("FILE \"(.*)\"").find(it)?.groupValues?.get(1) }
                 ?: listOf()
         }.getOrDefault(listOf())
+    }
+
+    private fun readLinesCached(
+        storageProvider: StorageProvider,
+        uri: Uri,
+        textFileCache: MutableMap<Uri, List<String>>,
+    ): List<String>? {
+        return textFileCache.getOrPut(uri) {
+            storageProvider.getInputStream(uri)?.readLines() ?: listOf()
+        }
     }
 }
