@@ -26,10 +26,11 @@ import com.swordfish.lemuroid.lib.library.db.dao.GameDao
 import com.swordfish.lemuroid.lib.library.db.dao.GameSearchDao
 import com.swordfish.lemuroid.lib.library.db.entity.DataFile
 import com.swordfish.lemuroid.lib.library.db.entity.Game
+import com.swordfish.lemuroid.lib.library.db.entity.IndexedFile
 
 @Database(
-    entities = [Game::class, DataFile::class],
-    version = 10,
+    entities = [Game::class, DataFile::class, IndexedFile::class],
+    version = 11,
     exportSchema = true,
 )
 abstract class RetrogradeDatabase : RoomDatabase() {
@@ -40,6 +41,8 @@ abstract class RetrogradeDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
 
     abstract fun dataFileDao(): DataFileDao
+
+    abstract fun indexedFileDao(): IndexedFileDao
 
     fun gameSearchDao() = GameSearchDao(gameSearchDaoInternal())
 
