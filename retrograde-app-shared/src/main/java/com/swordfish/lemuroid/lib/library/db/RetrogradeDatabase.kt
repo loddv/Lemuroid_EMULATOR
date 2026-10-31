@@ -24,6 +24,7 @@ import androidx.room.RoomDatabase
 import com.swordfish.lemuroid.lib.library.db.dao.DataFileDao
 import com.swordfish.lemuroid.lib.library.db.dao.GameDao
 import com.swordfish.lemuroid.lib.library.db.dao.GameSearchDao
+import com.swordfish.lemuroid.lib.library.db.dao.IndexedFileDao
 import com.swordfish.lemuroid.lib.library.db.entity.DataFile
 import com.swordfish.lemuroid.lib.library.db.entity.Game
 import com.swordfish.lemuroid.lib.library.db.entity.IndexedFile

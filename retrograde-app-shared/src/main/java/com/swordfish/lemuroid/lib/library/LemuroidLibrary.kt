@@ -156,7 +156,6 @@ class LemuroidLibrary(
             .filter { it.cacheable }
             .flatMap { it.file.allFiles() }
             .mapTo(cacheableUris) { it.uri.toString() }
-        cacheableUris.addAll(unknownResult.analyzedUris)
         persistIndexedFiles(batch, cachedEntries, unknownResult.biosNames, cacheableUris, startedAtMs)
         metrics.persistenceTimeMs.addAndGet(System.currentTimeMillis() - persistenceStartedAt)
     }
@@ -189,6 +188,7 @@ class LemuroidLibrary(
         return uri == baseStorageFile.uri.toString() &&
             name == baseStorageFile.name &&
             size == baseStorageFile.size &&
+            lastModified >= 0L &&
             lastModified == baseStorageFile.lastModified
     }
 
@@ -368,7 +368,6 @@ class LemuroidLibrary(
         metrics: ScanMetrics,
     ): UnknownFileResult {
         val biosNames = mutableMapOf<String, String>()
-        val analyzedUris = mutableSetOf<String>()
         entries
             .flatMap { it.file.allFiles() }
             .forEach { baseStorageFile ->
@@ -392,13 +391,10 @@ class LemuroidLibrary(
                     provider.getInputStream(storageFile.uri)?.let { inputStream ->
                         biosManager.tryAddBiosAfter(storageFile, inputStream, startedAtMs)
                         biosNames[baseStorageFile.uri.toString()] = biosName
-                        analyzedUris.add(baseStorageFile.uri.toString())
                     }
-                } else {
-                    analyzedUris.add(baseStorageFile.uri.toString())
                 }
             }
-        return UnknownFileResult(biosNames, analyzedUris)
+        return UnknownFileResult(biosNames)
     }
 
     private fun persistIndexedFiles(
@@ -539,7 +535,6 @@ class LemuroidLibrary(
 
     private data class UnknownFileResult(
         val biosNames: Map<String, String>,
-        val analyzedUris: Set<String>,
     )
 
     private class ScanMetrics {
