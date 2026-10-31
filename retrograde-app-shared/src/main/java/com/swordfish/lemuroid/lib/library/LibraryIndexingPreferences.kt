@@ -3,7 +3,7 @@ package com.swordfish.lemuroid.lib.library
 import android.content.Context
 import com.swordfish.lemuroid.lib.preferences.SharedPreferencesHelper
 
-class LibraryIndexingPreferences(context: Context) {
+class LibraryIndexingPreferences(private val context: Context) {
     private val preferences = SharedPreferencesHelper.getSharedPreferences(context)
 
     val incrementalIndexingEnabled: Boolean
