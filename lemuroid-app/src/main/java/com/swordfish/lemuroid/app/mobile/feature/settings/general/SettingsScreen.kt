@@ -230,5 +230,47 @@ private fun RomsSettings(
                 enabled = !indexingInProgress,
             )
         }
+        LemuroidSettingsSwitch(
+            enabled = !indexingInProgress,
+            state =
+                booleanPreferenceState(
+                    com.swordfish.lemuroid.lib.R.string.pref_key_incremental_indexing,
+                    true,
+                ),
+            title = { Text(text = stringResource(R.string.settings_title_incremental_indexing)) },
+            subtitle = { Text(text = stringResource(R.string.settings_description_incremental_indexing)) },
+        )
+        LemuroidSettingsSwitch(
+            enabled = !indexingInProgress,
+            state =
+                booleanPreferenceState(
+                    com.swordfish.lemuroid.lib.R.string.pref_key_parallel_indexing,
+                    true,
+                ),
+            title = { Text(text = stringResource(R.string.settings_title_parallel_indexing)) },
+            subtitle = { Text(text = stringResource(R.string.settings_description_parallel_indexing)) },
+        )
+        LemuroidSettingsSwitch(
+            enabled = !indexingInProgress,
+            state =
+                booleanPreferenceState(
+                    com.swordfish.lemuroid.lib.R.string.pref_key_reduce_expensive_reads,
+                    true,
+                ),
+            title = { Text(text = stringResource(R.string.settings_title_reduce_expensive_reads)) },
+            subtitle = { Text(text = stringResource(R.string.settings_description_reduce_expensive_reads)) },
+        )
+        LemuroidSettingsList(
+            enabled = !indexingInProgress,
+            state =
+                indexPreferenceState(
+                    com.swordfish.lemuroid.lib.R.string.pref_key_indexing_workers,
+                    "4",
+                    listOf("1", "2", "4", "8"),
+                ),
+            title = { Text(text = stringResource(R.string.settings_title_indexing_workers)) },
+            subtitle = { Text(text = stringResource(R.string.settings_description_indexing_workers)) },
+            items = listOf("1", "2", "4", "8"),
+        )
     }
 }

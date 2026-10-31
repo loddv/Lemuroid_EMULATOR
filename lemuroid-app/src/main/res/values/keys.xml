@@ -30,6 +30,13 @@
     <string name="pref_key_hd_mode" translatable="false">hd_mode</string>
     <string name="pref_key_viewport_alignment" translatable="false">viewport_alignment</string>
 
+    <string-array name="indexing_worker_values" translatable="false">
+        <item>1</item>
+        <item>2</item>
+        <item>4</item>
+        <item>8</item>
+    </string-array>
+
     <string-array translatable="false" name="pref_key_haptic_feedback_mode_values">
         <item>none</item>
         <item>press</item>

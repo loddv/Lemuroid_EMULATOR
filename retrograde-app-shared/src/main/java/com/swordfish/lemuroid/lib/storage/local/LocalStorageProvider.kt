@@ -57,8 +57,11 @@ class LocalStorageProvider(
     override fun listBaseStorageFiles(): Flow<List<BaseStorageFile>> =
         walkDirectory(getExternalFolder() ?: directoriesManager.getInternalRomsDirectory())
 
-    override fun getStorageFile(baseStorageFile: BaseStorageFile): StorageFile? {
-        return DocumentFileParser.parseDocumentFile(context, baseStorageFile)
+    override fun getStorageFile(
+        baseStorageFile: BaseStorageFile,
+        calculateCrc: Boolean,
+    ): StorageFile? {
+        return DocumentFileParser.parseDocumentFile(context, baseStorageFile, calculateCrc)
     }
 
     private fun getExternalFolder(): File? {
@@ -82,7 +85,17 @@ class LocalStorageProvider(
                 val newFiles = groups[false] ?: listOf()
 
                 directories.addAll(newDirectories)
-                emit((newFiles.map { BaseStorageFile(it.name, it.length(), it.toUri(), it.path) }))
+                emit(
+                    newFiles.map {
+                        BaseStorageFile(
+                            name = it.name,
+                            size = it.length(),
+                            uri = it.toUri(),
+                            path = it.path,
+                            lastModified = it.lastModified(),
+                        )
+                    },
+                )
             }
         }
 

@@ -31,6 +31,7 @@ data class StorageFile(
     val uri: Uri,
     val path: String? = null,
     val systemID: SystemID? = null,
+    val bytesRead: Long = 0L,
 ) {
     val extension: String
         get() = FileUtils.extractExtension(name)

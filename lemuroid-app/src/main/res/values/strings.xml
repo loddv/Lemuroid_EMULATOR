@@ -8,6 +8,14 @@
     <string name="favorites">Favorites</string>
     <string name="discover">Discover</string>
     <string name="rescan">Rescan</string>
+    <string name="settings_title_incremental_indexing">Incremental indexing</string>
+    <string name="settings_description_incremental_indexing">Reuse unchanged files from previous scans</string>
+    <string name="settings_title_parallel_indexing">Parallel indexing</string>
+    <string name="settings_description_parallel_indexing">Analyze multiple files at once</string>
+    <string name="settings_title_reduce_expensive_reads">Reduce expensive file reads</string>
+    <string name="settings_description_reduce_expensive_reads">Prefer names and serials before calculating CRCs</string>
+    <string name="settings_title_indexing_workers">Indexing workers</string>
+    <string name="settings_description_indexing_workers">Limit concurrent file analysis workers</string>
     <string name="stop">Stop</string>
     <string name="none">None</string>
     <string name="directory">Directory</string>

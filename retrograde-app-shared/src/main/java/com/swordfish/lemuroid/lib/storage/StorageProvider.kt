@@ -41,7 +41,10 @@ interface StorageProvider {
 
     fun getInputStream(uri: Uri): InputStream?
 
-    fun getStorageFile(baseStorageFile: BaseStorageFile): StorageFile?
+    fun getStorageFile(
+        baseStorageFile: BaseStorageFile,
+        calculateCrc: Boolean = true,
+    ): StorageFile?
 
     fun getGameRomFiles(
         game: Game,
