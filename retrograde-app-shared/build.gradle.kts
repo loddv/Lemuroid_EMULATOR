@@ -53,6 +53,10 @@ dependencies {
     kapt(deps.libs.androidx.room.compiler)
 }
 
+tasks.named("kaptReleaseKotlin") {
+    mustRunAfter("kaptDebugKotlin")
+}
+
 android {
     defaultConfig {
         javaCompileOptions {
