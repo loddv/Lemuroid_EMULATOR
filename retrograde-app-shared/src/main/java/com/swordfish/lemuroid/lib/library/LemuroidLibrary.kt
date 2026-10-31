@@ -7,6 +7,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package com.swordfish.lemuroid.lib.library
@@ -140,8 +148,16 @@ class LemuroidLibrary(
             resolvedEntries
                 .filterIsInstance<ScanEntry.File>()
                 .filter { it.existingGame == null }
-        val biosNames = handleUnknownFiles(provider, unknownEntries, startedAtMs, metrics)
-        persistIndexedFiles(batch, cachedEntries, biosNames, startedAtMs)
+        val unknownResult = handleUnknownFiles(provider, unknownEntries, startedAtMs, metrics)
+        val cacheableUris =
+            cachedEntries.flatMap { it.file.allFiles() }.map { it.uri.toString() }.toMutableSet()
+        resolvedEntries
+            .filterIsInstance<ScanEntry.GameFile>()
+            .filter { it.cacheable }
+            .flatMap { it.file.allFiles() }
+            .mapTo(cacheableUris) { it.uri.toString() }
+        cacheableUris.addAll(unknownResult.analyzedUris)
+        persistIndexedFiles(batch, cachedEntries, unknownResult.biosNames, cacheableUris, startedAtMs)
         metrics.persistenceTimeMs.addAndGet(System.currentTimeMillis() - persistenceStartedAt)
     }
 
@@ -161,9 +177,7 @@ class LemuroidLibrary(
                     cachedFiles.firstOrNull { it.uri == baseFile.uri.toString() }?.matches(baseFile) == true
                 }
 
-        if (game != null && (!indexingPreferences.incrementalIndexingEnabled || unchanged) ||
-            game == null && unchanged
-        ) {
+        if (unchanged) {
             metrics.reusedFiles.addAndGet(storageFile.allFiles().size.toLong())
             return ScanEntry.Cached(storageFile, game, cachedFiles)
         }
@@ -173,6 +187,7 @@ class LemuroidLibrary(
 
     private fun IndexedFile.matches(baseStorageFile: BaseStorageFile): Boolean {
         return uri == baseStorageFile.uri.toString() &&
+            name == baseStorageFile.name &&
             size == baseStorageFile.size &&
             lastModified == baseStorageFile.lastModified
     }
@@ -185,46 +200,60 @@ class LemuroidLibrary(
         metrics: ScanMetrics,
     ): ScanEntry {
         val metadataStartedAt = System.currentTimeMillis()
-        val game =
-            sortedFilesForScanning(entry.file).asSequence()
-                .mapNotNull { baseFile ->
-                    val fastStorageFile = safeStorageFile(provider, baseFile, !indexingPreferences.reduceExpensiveReadsEnabled, metrics)
-                    if (fastStorageFile == null) {
-                        null
-                    } else {
-                        val fastMetadata = retrieveMetadata(metadataProvider, fastStorageFile, metrics)
-                        if (fastMetadata != null) {
-                            convertGameMetadataToGame(entry.file, fastStorageFile, fastMetadata, startedAtMs, entry.existingGame)
-                        } else if (
-                            indexingPreferences.reduceExpensiveReadsEnabled &&
-                            fastStorageFile.crc == null &&
-                            fastStorageFile.size < MAX_SIZE_CRC32
-                        ) {
-                            safeStorageFile(provider, baseFile, true, metrics)
-                                ?.let { storageFile ->
-                                    retrieveMetadata(metadataProvider, storageFile, metrics)
-                                        ?.let {
-                                            convertGameMetadataToGame(
-                                                entry.file,
-                                                storageFile,
-                                                it,
-                                                startedAtMs,
-                                                entry.existingGame,
-                                            )
-                                        }
-                                }
-                        } else {
-                            null
-                        }
-                    }
+        var game: Game? = null
+        var metadataResolved = false
+        for (baseFile in sortedFilesForScanning(entry.file)) {
+            val fastStorageFile =
+                safeStorageFile(
+                    provider,
+                    baseFile,
+                    !indexingPreferences.reduceExpensiveReadsEnabled,
+                    metrics,
+                ) ?: continue
+            val fastMetadata = retrieveMetadata(metadataProvider, fastStorageFile, metrics)
+            if (fastMetadata != null) {
+                game = convertGameMetadataToGame(
+                    entry.file,
+                    fastStorageFile,
+                    fastMetadata,
+                    startedAtMs,
+                    entry.existingGame,
+                )
+                metadataResolved = true
+                break
+            }
+
+            if (
+                indexingPreferences.reduceExpensiveReadsEnabled &&
+                fastStorageFile.crc == null &&
+                fastStorageFile.size < MAX_SIZE_CRC32
+            ) {
+                val completeStorageFile = safeStorageFile(provider, baseFile, true, metrics)
+                val completeMetadata =
+                    completeStorageFile?.let { retrieveMetadata(metadataProvider, it, metrics) }
+                if (completeStorageFile != null && completeMetadata != null) {
+                    game = convertGameMetadataToGame(
+                        entry.file,
+                        completeStorageFile,
+                        completeMetadata,
+                        startedAtMs,
+                        entry.existingGame,
+                    )
+                    metadataResolved = true
+                    break
                 }
-                .firstOrNull()
+            }
+        }
 
         metrics.metadataTimeMs.addAndGet(System.currentTimeMillis() - metadataStartedAt)
         return when {
             game != null -> ScanEntry.GameFile(entry.file, game)
             entry.existingGame != null ->
-                ScanEntry.GameFile(entry.file, entry.existingGame.copy(lastIndexedAt = startedAtMs))
+                ScanEntry.GameFile(
+                    entry.file,
+                    entry.existingGame.copy(lastIndexedAt = startedAtMs),
+                    cacheable = metadataResolved,
+                )
             else -> entry
         }
     }
@@ -238,11 +267,10 @@ class LemuroidLibrary(
             listOf(
                 storageFile.crc?.let { "crc:$it" },
                 storageFile.serial?.let { "serial:$it" },
-                "name:${storageFile.name}",
                 storageFile.path?.let { "path:$it/name:${storageFile.name}" },
             ).filterNotNull()
 
-        keys.firstNotNullOfOrNull { metadataCache[it] }?.let { return it }
+        keys.asSequence().mapNotNull { metadataCache[it] }.firstOrNull()?.let { return it }
 
         metrics.metadataLookups.incrementAndGet()
         val metadata = metadataProvider.retrieveMetadata(storageFile)
@@ -338,12 +366,19 @@ class LemuroidLibrary(
         entries: List<ScanEntry.File>,
         startedAtMs: Long,
         metrics: ScanMetrics,
-    ): Map<String, String> {
+    ): UnknownFileResult {
         val biosNames = mutableMapOf<String, String>()
+        val analyzedUris = mutableSetOf<String>()
         entries
             .flatMap { it.file.allFiles() }
             .forEach { baseStorageFile ->
-                val fastStorageFile = safeStorageFile(provider, baseStorageFile, false, metrics) ?: return@forEach
+                val fastStorageFile =
+                    safeStorageFile(
+                        provider,
+                        baseStorageFile,
+                        !indexingPreferences.reduceExpensiveReadsEnabled,
+                        metrics,
+                    ) ?: return@forEach
                 var biosName = biosManager.findBiosFileName(fastStorageFile)
                 val storageFile =
                     if (biosName == null && indexingPreferences.reduceExpensiveReadsEnabled) {
@@ -357,16 +392,20 @@ class LemuroidLibrary(
                     provider.getInputStream(storageFile.uri)?.let { inputStream ->
                         biosManager.tryAddBiosAfter(storageFile, inputStream, startedAtMs)
                         biosNames[baseStorageFile.uri.toString()] = biosName
+                        analyzedUris.add(baseStorageFile.uri.toString())
                     }
+                } else {
+                    analyzedUris.add(baseStorageFile.uri.toString())
                 }
             }
-        return biosNames
+        return UnknownFileResult(biosNames, analyzedUris)
     }
 
     private fun persistIndexedFiles(
         batch: List<GroupedStorageFiles>,
         cachedEntries: List<ScanEntry.Cached>,
         biosNames: Map<String, String>,
+        cacheableUris: Set<String>,
         startedAtMs: Long,
     ) {
         val cachedByUri =
@@ -377,6 +416,7 @@ class LemuroidLibrary(
             batch
                 .flatMap { it.allFiles() }
                 .distinctBy { it.uri }
+                .filter { it.uri.toString() in cacheableUris }
                 .map { baseFile ->
                     val uri = baseFile.uri.toString()
                     IndexedFile(
@@ -482,7 +522,11 @@ class LemuroidLibrary(
     }
 
     private sealed class ScanEntry {
-        data class GameFile(val file: GroupedStorageFiles, val game: Game) : ScanEntry()
+        data class GameFile(
+            val file: GroupedStorageFiles,
+            val game: Game,
+            val cacheable: Boolean = true,
+        ) : ScanEntry()
 
         data class File(val file: GroupedStorageFiles, val existingGame: Game?) : ScanEntry()
 
@@ -492,6 +536,11 @@ class LemuroidLibrary(
             val indexedFiles: List<IndexedFile>,
         ) : ScanEntry()
     }
+
+    private data class UnknownFileResult(
+        val biosNames: Map<String, String>,
+        val analyzedUris: Set<String>,
+    )
 
     private class ScanMetrics {
         val enumeratedFiles = AtomicLong()
